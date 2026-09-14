@@ -16,8 +16,20 @@ from urllib.parse import urlparse
 
 import requests
 
-TARGET_DOMAIN = os.environ.get("TARGET_DOMAIN", "").lower().replace("www.", "")
+TARGET_DOMAIN = (os.environ.get("TARGET_DOMAIN", "").lower().strip()
+                 .replace("https://", "").replace("http://", "")
+                 .replace("www.", "").rstrip("/"))
 GL = os.environ.get("GL", "us")
+GEO_LOCATION = os.environ.get("GEO_LOCATION", "")  # e.g. "Clifton,New Jersey,United States"
+DEBUG = os.environ.get("DEBUG", "") == "1"
+
+
+def _uule(canonical_name: str) -> str:
+    """Google uule param for city-level geo-targeting."""
+    import urllib.parse
+    secret = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+    key = secret[len(canonical_name) % len(secret)]
+    return "w+CAIQICI" + key + urllib.parse.quote(canonical_name)
 
 
 def _match(link: str) -> bool:
@@ -26,6 +38,9 @@ def _match(link: str) -> bool:
 
 
 def _find_position(results: list, link_key: str = "link") -> tuple[int | None, str | None]:
+    if DEBUG:
+        for i, r in enumerate(results[:10], start=1):
+            print(f"    {i}. {r.get(link_key, '')}")
     for i, r in enumerate(results[:10], start=1):
         if _match(r.get(link_key, "") or ""):
             return r.get("position", i), r.get(link_key)
@@ -40,11 +55,12 @@ def search_brightdata(keyword: str) -> int | None:
     import urllib.parse
     zone = os.environ.get("BRIGHTDATA_ZONE", "serp_api1")
     q = urllib.parse.quote_plus(keyword)
+    geo = f"&uule={_uule(GEO_LOCATION)}" if GEO_LOCATION else ""
     r = requests.post("https://api.brightdata.com/request",
                       headers={"Authorization": f"Bearer {os.environ['BRIGHTDATA_KEY']}",
                                "Content-Type": "application/json"},
                       json={"zone": zone,
-                            "url": f"https://www.google.com/search?q={q}&num=10&gl={GL}&brd_json=1",
+                            "url": f"https://www.google.com/search?q={q}&num=10&gl={GL}{geo}&brd_json=1",
                             "format": "raw"},
                       timeout=60)
     r.raise_for_status()
