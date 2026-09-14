@@ -37,13 +37,42 @@ def _match(link: str) -> bool:
     return domain == TARGET_DOMAIN or domain.endswith("." + TARGET_DOMAIN)
 
 
+URL_KEYS = ("link", "url", "display_link", "displayed_link", "displayed_url")
+
+
+def _candidates(r: dict, link_key: str) -> list[str]:
+    """All URL-ish fields of a result, cleaned. display_link comes as
+    'www.site.com > page' breadcrumbs and may lack a scheme."""
+    out = []
+    for k in (link_key, *URL_KEYS):
+        v = r.get(k)
+        if not v or not isinstance(v, str):
+            continue
+        v = v.split(" ")[0].split("\u203a")[0].strip()
+        if v and "://" not in v:
+            v = "https://" + v
+        if v not in out:
+            out.append(v)
+    return out
+
+
+def _is_redirect(u: str) -> bool:
+    return "google." in urlparse(u).netloc and "/goto" in u
+
+
 def _find_position(results: list, link_key: str = "link") -> tuple[int | None, str | None]:
     if DEBUG:
         for i, r in enumerate(results[:10], start=1):
-            print(f"    {i}. {r.get(link_key, '')}")
+            cands = _candidates(r, link_key)
+            shown = next((c for c in cands if not _is_redirect(c)), cands[0] if cands else "")
+            print(f"    {i}. {shown}")
     for i, r in enumerate(results[:10], start=1):
-        if _match(r.get(link_key, "") or ""):
-            return r.get("position", i), r.get(link_key)
+        cands = _candidates(r, link_key)
+        if any(_match(c) for c in cands):
+            # never report a google redirect as the ranking URL
+            url = next((c for c in cands if _match(c) and not _is_redirect(c)),
+                       "https://" + TARGET_DOMAIN)
+            return r.get("position", i), url
     return None, None
 
 
@@ -114,12 +143,12 @@ def search_tavily(keyword: str) -> int | None:
 PROVIDERS = [
     {"name": "brightdata", "env": "BRIGHTDATA_KEY", "fn": search_brightdata,
      "quota": 4800, "reset": "monthly",  "approximate": False},  # 5,000 real, 200 safety margin
-    {"name": "serpapi",    "env": "SERPER_API_KEY",    "fn": search_serpapi,
+    {"name": "serpapi",    "env": "SERPAPI_KEY",    "fn": search_serpapi,
      "quota": 250,  "reset": "monthly",  "approximate": False},
     {"name": "scraperapi", "env": "SCRAPERAPI_KEY", "fn": search_scraperapi,
      "quota": 40,   "reset": "monthly",  "approximate": False},
     {"name": "tavily",     "env": "TAVILY_KEY",     "fn": search_tavily,
      "quota": 1000, "reset": "monthly",  "approximate": True},
-    {"name": "serper",     "env": "SERPER_KEY",     "fn": search_serper,
+    {"name": "serper",     "env": "SERPER_API_KEY",     "fn": search_serper,
      "quota": 2500, "reset": "one_time", "approximate": False},
 ]
