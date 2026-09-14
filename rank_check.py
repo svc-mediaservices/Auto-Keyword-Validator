@@ -16,7 +16,7 @@ Tab "usage": provider | period | used   (period = "2026-09" or "lifetime")
 Required secrets/env:
   SHEET_ID, TARGET_DOMAIN, GOOGLE_CREDENTIALS (service account JSON)
   Plus at least one provider key: BRIGHTDATA_KEY, SERPAPI_KEY,
-  SCRAPERAPI_KEY, TAVILY_KEY, SERPER_KEY
+  SCRAPERAPI_KEY, TAVILY_KEY, SERPER_API_KEY
 """
 
 import json

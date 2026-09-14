@@ -1,0 +1,33 @@
+name: Weekly LLM Visibility Check
+
+on:
+  schedule:
+    - cron: "0 13 * * 3"   # Wednesdays 13:00 UTC (9 AM ET)
+  workflow_dispatch:
+    inputs:
+      max_queries:
+        description: "Cap queries per LLM this run (0 = all keywords)"
+        default: "0"
+
+jobs:
+  llm-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run LLM visibility check
+        env:
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          TARGET_DOMAIN: ${{ secrets.TARGET_DOMAIN }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LLM_MAX_QUERIES: ${{ inputs.max_queries || '0' }}
+        run: python llm_check.py

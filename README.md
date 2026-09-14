@@ -37,7 +37,7 @@ Push these files to a repo, then add secrets (Settings → Secrets → Actions):
 | `SHEET_ID` | from the sheet URL: `docs.google.com/spreadsheets/d/THIS_PART/edit` |
 | `TARGET_DOMAIN` | e.g. `jamesvasquezlaw.com` |
 | `GOOGLE_CREDENTIALS` | full contents of the service account JSON file |
-| `SERPAPI_KEY` / `SCRAPERAPI_KEY` / `TAVILY_KEY` / `SERPER_KEY` | whichever you have; missing ones are skipped |
+| `SERPAPI_KEY` / `SCRAPERAPI_KEY` / `TAVILY_KEY` / `SERPER_API_KEY` | whichever you have; missing ones are skipped |
 
 Runs Mondays 8 AM ET. Manual: Actions tab → Weekly Rank Check → Run workflow.
 

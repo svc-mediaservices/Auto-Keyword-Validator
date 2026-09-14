@@ -1,0 +1,40 @@
+name: Weekly Rank Check
+
+on:
+  schedule:
+    - cron: "0 12 * * 1,4"   # Mondays + Thursdays 12:00 UTC (8 AM ET)
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: "Print top 10 URLs per keyword"
+        type: boolean
+        default: false
+
+jobs:
+  check-rankings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run rank check
+        env:
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          TARGET_DOMAIN: ${{ secrets.TARGET_DOMAIN }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          BRIGHTDATA_KEY: ${{ secrets.BRIGHTDATA_KEY }}
+          BRIGHTDATA_ZONE: serp_api1
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          SCRAPERAPI_KEY: ${{ secrets.SCRAPERAPI_KEY }}
+          TAVILY_KEY: ${{ secrets.TAVILY_KEY }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+          GL: us
+          GEO_LOCATION: ${{ vars.GEO_LOCATION }}
+          DEBUG: ${{ inputs.debug == true && '1' || '' }}
+        run: python rank_check.py
