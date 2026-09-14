@@ -1,8 +1,9 @@
 """
 Weekly LLM visibility checker (ChatGPT, Claude, Perplexity).
 
-Reads keywords from the "rankings" tab (column A) and maintains one tab
-per LLM: llm_chatgpt, llm_claude, llm_perplexity. Tabs are auto-created.
+Each LLM tab holds its OWN prompts in column A (they are independent of
+the SERP keywords in "rankings"). Put your prompts in A2 down on the
+llm_chatgpt and llm_gemini tabs; results fill in to the right.
 
 Tab layout (same rolling model as the SERP tracker):
   A: keyword
@@ -41,21 +42,24 @@ def get_sheet():
     return gspread.authorize(creds).open_by_key(os.environ["SHEET_ID"])
 
 
-def run_tab(sheet, tab: str, fn, keywords: list[str]):
+def run_tab(sheet, tab: str, fn):
     try:
         ws = sheet.worksheet(tab)
-        grid = ws.get_all_values()
     except gspread.WorksheetNotFound:
-        ws = sheet.add_worksheet(tab, rows=len(keywords) + 10,
-                                 cols=1 + MAX_HISTORY + len(SUMMARY_HEADERS))
-        grid = []
+        print(f"{tab}: tab not found, skipping (create it and put prompts in column A)")
+        return
+    grid = ws.get_all_values()
+    keywords = [r[0].strip() for r in grid[1:] if r and r[0].strip()]
+    if not keywords:
+        print(f"{tab}: no prompts in column A, skipping")
+        return
 
-    old_header = grid[0] if grid else ["keyword"]
+    old_header = grid[0] if grid else ["prompt"]
     old_dates = [h for h in old_header[1:] if h not in SUMMARY_HEADERS][:MAX_HISTORY]
     old_rows = {r[0].strip(): r for r in grid[1:] if r and r[0].strip()}
 
     today = datetime.now(timezone.utc).strftime("%m/%d")
-    new_header = ["keyword", today] + old_dates[:MAX_HISTORY - 1] + SUMMARY_HEADERS
+    new_header = ["prompt", today] + old_dates[:MAX_HISTORY - 1] + SUMMARY_HEADERS
 
     out, cited_count, done = [], 0, 0
     for kw in keywords:
@@ -89,19 +93,14 @@ def run_tab(sheet, tab: str, fn, keywords: list[str]):
 
 def main():
     sheet = get_sheet()
-    keywords = [k.strip() for k in sheet.worksheet("rankings").col_values(1)[1:]
-                if k.strip()]
-    if not keywords:
-        sys.exit("No keywords in 'rankings' tab")
-
     active = {tab: fn for tab, (env, fn) in LLM_PROVIDERS.items()
               if os.environ.get(env)}
     if not active:
         sys.exit("No LLM API keys configured")
 
-    print(f"Keywords: {len(keywords)} | LLMs: {', '.join(active)}")
+    print(f"LLMs: {', '.join(active)}")
     for tab, fn in active.items():
-        run_tab(sheet, tab, fn, keywords)
+        run_tab(sheet, tab, fn)
 
 
 if __name__ == "__main__":
